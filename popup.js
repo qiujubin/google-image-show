@@ -12,9 +12,17 @@ function setStorage(obj) {
 }
 
 async function loadState() {
-  const { enabled = true, allowedDomains = [], blockedDomains = [], mode = 'allow' } = await getStorage(['enabled','allowedDomains','blockedDomains','mode']);
+  // 读取启用、模式集合与当前模式
+  const { enabled = true, modes = {}, activeModeId = '' } = await getStorage(['enabled','modes','activeModeId']);
   const toggle = document.getElementById('toggle');
   const stateText = document.getElementById('stateText');
+  const modeName = document.getElementById('modeName');
+  const ids = Object.keys(modes);
+  const idx = Math.max(0, ids.indexOf(activeModeId));
+  const currentId = ids[idx] || ids[0];
+  const currentMode = modes[currentId] || { name: '默认模式', allow: [], block: [] };
+
+  // 启用切换
   toggle.classList.toggle('on', !!enabled);
   stateText.textContent = enabled ? '已启用' : '已禁用';
   toggle.onclick = async () => {
@@ -24,69 +32,79 @@ async function loadState() {
     await setStorage({ enabled: now });
   };
 
+  // 当前模式显示
+  modeName.textContent = currentMode.name;
+
+  // 允许/屏蔽添加目标切换（仅影响“添加到当前模式”目标列表）
+  const pAllow = document.getElementById('pModeAllow');
+  const pBlock = document.getElementById('pModeBlock');
+  let addTarget = 'allow';
+  function setAddTargetUI(t){ pAllow.classList.toggle('active', t==='allow'); pBlock.classList.toggle('active', t==='block'); }
+  setAddTargetUI(addTarget);
+  pAllow.onclick = () => { addTarget = 'allow'; setAddTargetUI(addTarget); showFeedback('添加目标：允许名单'); };
+  pBlock.onclick = () => { addTarget = 'block'; setAddTargetUI(addTarget); showFeedback('添加目标：屏蔽名单'); };
+
+  // 快速添加：输入框
   document.getElementById('addTyped').onclick = async () => {
     const input = document.getElementById('domainInput');
     const d = (input.value || '').trim().toLowerCase().replace(/^www\./,'');
     if (!d || !isValidDomain(d)) return showFeedback('请输入有效域名，例如 unsplash.com','err');
-    const { mode: m = 'allow', allowedDomains: al = [], blockedDomains: bl = [] } = await getStorage(['mode','allowedDomains','blockedDomains']);
-    if (m === 'allow') {
-      const set = new Set(al); set.add(d);
-      await setStorage({ allowedDomains: Array.from(set) });
-      showFeedback('已添加到允许名单：' + d, 'ok');
-    } else {
-      const set = new Set(bl); set.add(d);
-      await setStorage({ blockedDomains: Array.from(set) });
-      showFeedback('已添加到屏蔽名单：' + d, 'ok');
-    }
+    const { modes: M = {}, activeModeId: A = '' } = await getStorage(['modes','activeModeId']);
+    const ids2 = Object.keys(M); const id2 = ids2.includes(A) ? A : ids2[0];
+    const mode2 = M[id2] || { name:'默认模式', allow:[], block:[] };
+    const set = new Set(addTarget === 'allow' ? (mode2.allow || []) : (mode2.block || []));
+    set.add(d);
+    if (addTarget === 'allow') mode2.allow = Array.from(set); else mode2.block = Array.from(set);
+    M[id2] = mode2;
+    await setStorage({ modes: M });
+    showFeedback(`已添加到「${mode2.name}」的${addTarget==='allow'?'允许':'屏蔽'}名单：${d}`, 'ok');
     input.value = '';
   };
 
+  // 快速添加：当前标签域名
   document.getElementById('addCurrent').onclick = async () => {
     try {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      const url = new URL(tab.url);
-      const d = url.hostname.replace(/^www\./,'');
+      const url = new URL(tab.url); const d = url.hostname.replace(/^www\./,'');
       if (!isValidDomain(d)) return showFeedback('当前标签域名不可用：' + d, 'err');
-      const { mode: m = 'allow', allowedDomains: al = [], blockedDomains: bl = [] } = await getStorage(['mode','allowedDomains','blockedDomains']);
-      if (m === 'allow') {
-        const set = new Set(al); set.add(d);
-        await setStorage({ allowedDomains: Array.from(set) });
-        showFeedback('已添加到允许名单：' + d, 'ok');
-      } else {
-        const set = new Set(bl); set.add(d);
-        await setStorage({ blockedDomains: Array.from(set) });
-        showFeedback('已添加到屏蔽名单：' + d, 'ok');
-      }
-    } catch (e) {
-      showFeedback('无法获取当前标签域名', 'err');
-    }
+      const { modes: M = {}, activeModeId: A = '' } = await getStorage(['modes','activeModeId']);
+      const ids2 = Object.keys(M); const id2 = ids2.includes(A) ? A : ids2[0];
+      const mode2 = M[id2] || { name:'默认模式', allow:[], block:[] };
+      const set = new Set(addTarget === 'allow' ? (mode2.allow || []) : (mode2.block || []));
+      set.add(d);
+      if (addTarget === 'allow') mode2.allow = Array.from(set); else mode2.block = Array.from(set);
+      M[id2] = mode2;
+      await setStorage({ modes: M });
+      showFeedback(`已添加到「${mode2.name}」的${addTarget==='allow'?'允许':'屏蔽'}名单：${d}`, 'ok');
+    } catch (e) { showFeedback('无法获取当前标签域名', 'err'); }
   };
 
-  document.getElementById('openOptions').onclick = () => {
-    chrome.runtime.openOptionsPage();
-  };
+  // 打开完整设置
+  document.getElementById('openOptions').onclick = () => { chrome.runtime.openOptionsPage(); };
 
+  // 请求重新过滤当前页面
   document.getElementById('refilter').onclick = async () => {
-    // 通知当前页重新过滤（内容脚本监听 storage 变化或主动发消息）
     const { enabled: en = true } = await getStorage(['enabled']);
-    if (!en) {
-      showFeedback('扩展已禁用，请先启用', 'err');
-      return;
-    }
+    if (!en) return showFeedback('扩展已禁用，请先启用', 'err');
     await setStorage({ _refreshToken: Date.now() });
     showFeedback('已请求重新过滤当前页面', 'ok');
   };
 
-  // 模式切换
-  const pAllow = document.getElementById('pModeAllow');
-  const pBlock = document.getElementById('pModeBlock');
-  function setModeUI(m){
-    pAllow.classList.toggle('active', m==='allow');
-    pBlock.classList.toggle('active', m==='block');
-  }
-  setModeUI(mode);
-  pAllow.onclick = async () => { await setStorage({ mode: 'allow' }); setModeUI('allow'); showFeedback('已切换到允许模式'); };
-  pBlock.onclick = async () => { await setStorage({ mode: 'block' }); setModeUI('block'); showFeedback('已切换到屏蔽模式'); };
+  // 上一/下一模式切换
+  document.getElementById('prevMode').onclick = async () => {
+    const ids3 = Object.keys(modes); const i = Math.max(0, ids3.indexOf(currentId));
+    const nextIndex = (i - 1 + ids3.length) % ids3.length;
+    const nextId = ids3[nextIndex]; const nextName = modes[nextId]?.name || nextId;
+    await setStorage({ activeModeId: nextId });
+    modeName.textContent = nextName; showFeedback(`已切换到模式：${nextName}`, 'success');
+  };
+  document.getElementById('nextMode').onclick = async () => {
+    const ids3 = Object.keys(modes); const i = Math.max(0, ids3.indexOf(currentId));
+    const nextIndex = (i + 1) % ids3.length;
+    const nextId = ids3[nextIndex]; const nextName = modes[nextId]?.name || nextId;
+    await setStorage({ activeModeId: nextId });
+    modeName.textContent = nextName; showFeedback(`已切换到模式：${nextName}`, 'success');
+  };
 }
 
 function showFeedback(msg, type='') {

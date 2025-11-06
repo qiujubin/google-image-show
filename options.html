@@ -44,18 +44,25 @@
     .seg { display:inline-flex; border:1px solid var(--border); border-radius:10px; overflow:hidden; }
     .seg button { appearance:none; border:none; background:#0c1116; color:var(--text); padding:8px 12px; cursor:pointer; }
     .seg button.active { background: var(--accent); color:#fff; }
+    .topbar { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+    select { background:#0c1116; color:var(--text); border:1px solid var(--border); border-radius:8px; padding:6px 8px; }
+    .grid { display:grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .card { padding:12px; border:1px solid var(--border); border-radius:12px; background:#0c1116; }
+    .card h2 { font-size:14px; margin:0 0 8px; color:var(--muted); }
+    .fade { transition: opacity .2s ease; }
   </style>
   </head>
 <body>
   <div class="wrap">
-    <h1 id="title">允许显示的网站域名</h1>
-    <div class="desc" id="desc">每行一个域名，不需要写协议或路径。可填写顶级域名（会匹配子域名）。例如：<code>unsplash.com</code>、<code>pixabay.com</code>。以 <code>#</code> 开头的行会被忽略。</div>
-    <div class="row">
-      <div class="seg" id="modeSeg">
-        <button id="modeAllow" class="active">允许模式</button>
-        <button id="modeBlock">屏蔽模式</button>
-      </div>
+    <div class="topbar">
+      <strong>选择模式：</strong>
+      <select id="modeSelect" class="fade"></select>
+      <button id="addMode" class="btn secondary">新增模式</button>
+      <button id="renameMode" class="btn secondary">重命名</button>
+      <button id="deleteMode" class="btn secondary">删除模式</button>
     </div>
+    <h1 id="title">允许/屏蔽规则</h1>
+    <div class="desc" id="desc">每个模式拥有独立的“允许”与“屏蔽”规则。填写顶级域名（匹配子域名）；每行一个，<code>#</code> 为注释。</div>
     <div class="row">
       <div class="stat" id="stats">
         <div class="badge"><span class="dot ok"></span>有效域名：<span id="count-valid">0</span></div>
@@ -67,9 +74,19 @@
         <button class="btn primary" id="save">保存</button>
       </div>
     </div>
-    <textarea id="allowedSites" placeholder="例如：\nunsplash.com\npixabay.com\n# 以 # 开头的行是注释"></textarea>
+    <div class="grid fade" id="rulesArea">
+      <div class="card">
+        <h2>允许名单</h2>
+        <textarea id="allowedSites" placeholder="例如：\nunsplash.com\npixabay.com\n# 以 # 开头的行是注释"></textarea>
+        <div class="list" id="previewAllow"></div>
+      </div>
+      <div class="card">
+        <h2>屏蔽名单</h2>
+        <textarea id="blockedSites" placeholder="例如：\nexample.com\n# 以 # 开头的行是注释"></textarea>
+        <div class="list" id="previewBlock"></div>
+      </div>
+    </div>
     <div class="feedback" id="feedback">更改会在 Google 图片页刷新后生效（tbm=isch）。</div>
-    <div class="list" id="preview"></div>
   </div>
   <script src="options.js"></script>
   </body>

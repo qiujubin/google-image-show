@@ -1,19 +1,37 @@
-// 默认允许的域名（可被用户覆盖）
+// 默认允许域名（历史遗留，不再直接使用）
 const DEFAULT_ALLOWED = [];
-let allowedDomains = [];
-let blockedDomains = [];
 let enabled = true;
-let mode = 'allow'; // 'allow' 或 'block'
+
+// 多模式数据
+// modes: { [id]: { name: string, allow: string[], block: string[] } }
+let modes = {};
+let activeModeId = '';
+let currentAllow = [];
+let currentBlock = [];
 
 // 加载用户设置
 async function loadSettings() {
   return new Promise((resolve) => {
-    chrome.storage.sync.get(['allowedDomains', 'blockedDomains', 'enabled', 'mode'], (result) => {
-      allowedDomains = result.allowedDomains || DEFAULT_ALLOWED;
-      blockedDomains = result.blockedDomains || [];
-      enabled = result.enabled !== false; // 默认启用
-      mode = result.mode || 'allow';
-      resolve();
+    chrome.storage.sync.get(['modes','activeModeId','enabled','allowedDomains','blockedDomains','mode'], (r) => {
+      enabled = r.enabled !== false;
+      if (!r.modes || typeof r.modes !== 'object' || Object.keys(r.modes).length === 0) {
+        // 迁移旧版本：保持旧行为（allow 模式只用 allow；block 模式只用 block）
+        const oldMode = r.mode || 'allow';
+        const allow = oldMode === 'allow' ? (r.allowedDomains || DEFAULT_ALLOWED) : [];
+        const block = oldMode === 'block' ? (r.blockedDomains || []) : [];
+        const id = 'mode-default';
+        modes = { [id]: { name: '默认模式', allow, block } };
+        activeModeId = id;
+        chrome.storage.sync.set({ modes, activeModeId }, () => {
+          currentAllow = allow; currentBlock = block; resolve();
+        });
+      } else {
+        modes = r.modes; activeModeId = r.activeModeId || Object.keys(r.modes)[0];
+        const cur = modes[activeModeId] || { allow: DEFAULT_ALLOWED, block: [] };
+        currentAllow = Array.isArray(cur.allow) ? cur.allow : DEFAULT_ALLOWED;
+        currentBlock = Array.isArray(cur.block) ? cur.block : [];
+        resolve();
+      }
     });
   });
 }
@@ -22,18 +40,18 @@ async function loadSettings() {
 function isAllowed(url) {
   try {
     const domain = new URL(url).hostname.replace('www.', '');
-    if (mode === 'allow') {
-      // 若未配置任何允许域名，则默认不过滤（允许全部）
-      if (!allowedDomains || allowedDomains.length === 0) return true;
-      return allowedDomains.some(allowed => domain === allowed || domain.endsWith('.' + allowed));
+    const match = (list) => list && list.length > 0 && list.some(d => domain === d || domain.endsWith('.' + d));
+    // 策略：
+    // - 若允许名单非空：仅允许命中允许名单的条目；若同时命中屏蔽名单则仍屏蔽（屏蔽优先）。
+    // - 若允许名单为空：允许所有，命中屏蔽名单的条目被隐藏。
+    if (currentAllow && currentAllow.length > 0) {
+      const allowed = match(currentAllow);
+      if (!allowed) return false;
+      return !match(currentBlock);
     } else {
-      // 屏蔽模式：命中黑名单则不允许，否则允许
-      if (!blockedDomains || blockedDomains.length === 0) return true;
-      const hit = blockedDomains.some(blocked => domain === blocked || domain.endsWith('.' + blocked));
-      return !hit;
+      return !match(currentBlock);
     }
   } catch (e) {
-    // URL 解析异常时不拦截，避免误屏蔽
     return true;
   }
 }
@@ -115,10 +133,10 @@ function unfilterAll() {
 }
 
 // 监听动态加载（Google 图片滚动加载）
-const observer = new MutationObserver(() => {
-  if (!enabled) return;
-  if (isImagesPage()) { filterResults(); } else { filterInlineImagePack(); }
-});
+  const observer = new MutationObserver(() => {
+    if (!enabled) return;
+    if (isImagesPage()) { filterResults(); } else { filterInlineImagePack(); }
+  });
 
 // 启动插件
 (async () => {
@@ -136,14 +154,12 @@ const observer = new MutationObserver(() => {
   // 监听设置变化，动态应用
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'sync') return;
-    if (changes.allowedDomains) {
-      allowedDomains = changes.allowedDomains.newValue || DEFAULT_ALLOWED;
-      if (enabled) {
-        if (isImagesPage()) { filterResults(); } else { filterInlineImagePack(); }
-      }
-    }
-    if (changes.blockedDomains) {
-      blockedDomains = changes.blockedDomains.newValue || [];
+    if (changes.modes || changes.activeModeId) {
+      if (changes.modes) { modes = changes.modes.newValue || modes; }
+      if (changes.activeModeId) { activeModeId = changes.activeModeId.newValue || activeModeId; }
+      const cur = modes[activeModeId] || { allow: DEFAULT_ALLOWED, block: [] };
+      currentAllow = Array.isArray(cur.allow) ? cur.allow : DEFAULT_ALLOWED;
+      currentBlock = Array.isArray(cur.block) ? cur.block : [];
       if (enabled) {
         if (isImagesPage()) { filterResults(); } else { filterInlineImagePack(); }
       }
@@ -153,12 +169,6 @@ const observer = new MutationObserver(() => {
       if (!enabled) {
         unfilterAll();
       } else {
-        if (isImagesPage()) { filterResults(); } else { filterInlineImagePack(); }
-      }
-    }
-    if (changes.mode) {
-      mode = changes.mode.newValue || 'allow';
-      if (enabled) {
         if (isImagesPage()) { filterResults(); } else { filterInlineImagePack(); }
       }
     }
