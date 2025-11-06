@@ -68,13 +68,49 @@ function showFeedback(msg, type = '') {
 }
 
 function loadSaved() {
-  storage.get(['allowedDomains'], (result) => {
-    const list = result.allowedDomains || [];
+  storage.get(['allowedDomains','blockedDomains','mode'], (result) => {
+    const allowList = result.allowedDomains || [];
+    const blockList = result.blockedDomains || [];
+    const mode = result.mode || 'allow';
     const textarea = document.getElementById('allowedSites');
+    const btnAllow = document.getElementById('modeAllow');
+    const btnBlock = document.getElementById('modeBlock');
+    const title = document.getElementById('title');
+    const desc = document.getElementById('desc');
+
+    function applyModeUI(m){
+      btnAllow.classList.toggle('active', m==='allow');
+      btnBlock.classList.toggle('active', m==='block');
+      title.textContent = m==='allow' ? '允许显示的网站域名' : '屏蔽的网站域名';
+      desc.textContent = m==='allow'
+        ? '每行一个域名，不需要写协议或路径。填写顶级域名（匹配其子域名）。示例：unsplash.com、pixabay.com。以 # 开头的行会被忽略。'
+        : '每行一个域名，不需要写协议或路径。填写顶级域名（匹配其子域名）。示例：example.com 将屏蔽其所有子域名。以 # 开头的行会被忽略。';
+    }
+
+    applyModeUI(mode);
+    const list = mode==='allow' ? allowList : blockList;
     textarea.value = list.join('\n');
     const parsed = parseInput(textarea.value);
     renderStats(parsed);
-    showFeedback('已加载已保存的域名，共 ' + list.length + ' 个');
+    showFeedback(`已加载${mode==='allow'?'允许':'屏蔽'}名单，共 ${list.length} 个`);
+
+    // 绑定模式切换
+    document.getElementById('modeAllow').onclick = () => {
+      storage.set({ mode: 'allow' }, () => {
+        applyModeUI('allow');
+        textarea.value = allowList.join('\n');
+        renderStats(parseInput(textarea.value));
+        showFeedback('已切换到允许模式');
+      });
+    };
+    document.getElementById('modeBlock').onclick = () => {
+      storage.set({ mode: 'block' }, () => {
+        applyModeUI('block');
+        textarea.value = blockList.join('\n');
+        renderStats(parseInput(textarea.value));
+        showFeedback('已切换到屏蔽模式');
+      });
+    };
   });
 }
 
@@ -94,12 +130,16 @@ function bindEvents() {
     const { valid, invalid, dupCount } = parsed;
     btnSave.disabled = true;
     btnSave.textContent = '保存中…';
-    storage.set({ allowedDomains: valid }, () => {
-      renderStats(parsed);
-      btnSave.disabled = false;
-      btnSave.textContent = '保存';
-      const msg = `保存成功！有效: ${valid.length}，重复: ${dupCount}，无效: ${invalid.length}`;
-      showFeedback(msg, 'success');
+    storage.get(['mode'], (r) => {
+      const m = r.mode || 'allow';
+      const payload = m==='allow' ? { allowedDomains: valid } : { blockedDomains: valid };
+      storage.set(payload, () => {
+        renderStats(parsed);
+        btnSave.disabled = false;
+        btnSave.textContent = '保存';
+        const msg = `保存成功！(${m==='allow'?'允许':'屏蔽'}) 有效: ${valid.length}，重复: ${dupCount}，无效: ${invalid.length}`;
+        showFeedback(msg, 'success');
+      });
     });
   });
 

@@ -41,12 +41,21 @@
     .list { margin-top: 14px; display:flex; gap:8px; flex-wrap:wrap; }
     .pill { padding:6px 10px; border-radius: 999px; border: 1px solid var(--border); background:#0c1116; font-size:12px; color: var(--text); }
     .pill.invalid { border-color: var(--danger); color: #ffb4b4; }
+    .seg { display:inline-flex; border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+    .seg button { appearance:none; border:none; background:#0c1116; color:var(--text); padding:8px 12px; cursor:pointer; }
+    .seg button.active { background: var(--accent); color:#fff; }
   </style>
   </head>
 <body>
   <div class="wrap">
-    <h1>允许显示的网站域名</h1>
-    <div class="desc">每行一个域名，不需要写协议或路径。可填写顶级域名（会匹配子域名）。例如：<code>unsplash.com</code>、<code>pixabay.com</code>。以 <code>#</code> 开头的行会被忽略。</div>
+    <h1 id="title">允许显示的网站域名</h1>
+    <div class="desc" id="desc">每行一个域名，不需要写协议或路径。可填写顶级域名（会匹配子域名）。例如：<code>unsplash.com</code>、<code>pixabay.com</code>。以 <code>#</code> 开头的行会被忽略。</div>
+    <div class="row">
+      <div class="seg" id="modeSeg">
+        <button id="modeAllow" class="active">允许模式</button>
+        <button id="modeBlock">屏蔽模式</button>
+      </div>
+    </div>
     <div class="row">
       <div class="stat" id="stats">
         <div class="badge"><span class="dot ok"></span>有效域名：<span id="count-valid">0</span></div>

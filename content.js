@@ -1,15 +1,18 @@
 // 默认允许的域名（可被用户覆盖）
 const DEFAULT_ALLOWED = [];
-
 let allowedDomains = [];
+let blockedDomains = [];
 let enabled = true;
+let mode = 'allow'; // 'allow' 或 'block'
 
 // 加载用户设置
 async function loadSettings() {
   return new Promise((resolve) => {
-    chrome.storage.sync.get(['allowedDomains', 'enabled'], (result) => {
+    chrome.storage.sync.get(['allowedDomains', 'blockedDomains', 'enabled', 'mode'], (result) => {
       allowedDomains = result.allowedDomains || DEFAULT_ALLOWED;
+      blockedDomains = result.blockedDomains || [];
       enabled = result.enabled !== false; // 默认启用
+      mode = result.mode || 'allow';
       resolve();
     });
   });
@@ -19,11 +22,16 @@ async function loadSettings() {
 function isAllowed(url) {
   try {
     const domain = new URL(url).hostname.replace('www.', '');
-    // 若未配置任何允许域名，则默认不过滤（允许全部）
-    if (!allowedDomains || allowedDomains.length === 0) return true;
-    return allowedDomains.some(allowed =>
-      domain === allowed || domain.endsWith('.' + allowed)
-    );
+    if (mode === 'allow') {
+      // 若未配置任何允许域名，则默认不过滤（允许全部）
+      if (!allowedDomains || allowedDomains.length === 0) return true;
+      return allowedDomains.some(allowed => domain === allowed || domain.endsWith('.' + allowed));
+    } else {
+      // 屏蔽模式：命中黑名单则不允许，否则允许
+      if (!blockedDomains || blockedDomains.length === 0) return true;
+      const hit = blockedDomains.some(blocked => domain === blocked || domain.endsWith('.' + blocked));
+      return !hit;
+    }
   } catch (e) {
     // URL 解析异常时不拦截，避免误屏蔽
     return true;
@@ -134,11 +142,23 @@ const observer = new MutationObserver(() => {
         if (isImagesPage()) { filterResults(); } else { filterInlineImagePack(); }
       }
     }
+    if (changes.blockedDomains) {
+      blockedDomains = changes.blockedDomains.newValue || [];
+      if (enabled) {
+        if (isImagesPage()) { filterResults(); } else { filterInlineImagePack(); }
+      }
+    }
     if (changes.enabled) {
       enabled = changes.enabled.newValue !== false;
       if (!enabled) {
         unfilterAll();
       } else {
+        if (isImagesPage()) { filterResults(); } else { filterInlineImagePack(); }
+      }
+    }
+    if (changes.mode) {
+      mode = changes.mode.newValue || 'allow';
+      if (enabled) {
         if (isImagesPage()) { filterResults(); } else { filterInlineImagePack(); }
       }
     }

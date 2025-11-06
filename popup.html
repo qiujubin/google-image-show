@@ -35,10 +35,17 @@
       <div id="toggle" class="switch"><span class="knob"></span></div>
     </div>
     <div class="muted" id="stateText">已启用</div>
+    <div class="row" style="margin-top:8px">
+      <div class="muted">过滤模式</div>
+      <div class="seg" id="modeSeg">
+        <button id="pModeAllow" class="active">允许</button>
+        <button id="pModeBlock">屏蔽</button>
+      </div>
+    </div>
 
-    <input id="domainInput" type="text" placeholder="快速添加允许的域名，如 unsplash.com">
+    <input id="domainInput" type="text" placeholder="快速添加域名，如 unsplash.com">
     <div class="actions">
-      <button id="addTyped" class="btn primary">添加域名</button>
+      <button id="addTyped" class="btn primary">添加到当前模式</button>
       <button id="addCurrent" class="btn secondary">添加当前标签域名</button>
     </div>
     <div class="actions">
