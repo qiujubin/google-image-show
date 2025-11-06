@@ -78,18 +78,25 @@ let activeModeId = '';
 function newModeId() { return 'mode-' + Date.now() + '-' + Math.floor(Math.random()*1000); }
 
 function migrateIfNeeded(cb) {
-  storage.get(['modes','activeModeId','allowedDomains','blockedDomains','mode'], (r) => {
+  storage.get(['modes','activeModeId','allowedDomains','blockedDomains','mode','filterMode'], (r) => {
     if (!r.modes || typeof r.modes !== 'object' || Object.keys(r.modes).length === 0) {
       const id = newModeId();
-      const oldMode = (r.mode || 'allow');
+      const oldMode = (r.filterMode || r.mode || 'allow');
       const allow = oldMode === 'allow' ? (r.allowedDomains || []) : [];
       const block = oldMode === 'block' ? (r.blockedDomains || []) : [];
       const initial = { [id]: { name: '默认模式', allow, block } };
-      storage.set({ modes: initial, activeModeId: id }, () => {
+      storage.set({ modes: initial, activeModeId: id, filterMode: oldMode }, () => {
         modes = initial; activeModeId = id; cb?.();
       });
     } else {
-      modes = r.modes; activeModeId = r.activeModeId || Object.keys(r.modes)[0]; cb?.();
+      modes = r.modes; activeModeId = r.activeModeId || Object.keys(r.modes)[0];
+      if (!r.filterMode && r.mode) {
+        storage.set({ filterMode: r.mode }, () => cb?.());
+      } else if (!r.filterMode && !r.mode) {
+        storage.set({ filterMode: 'allow' }, () => cb?.());
+      } else {
+        cb?.();
+      }
     }
   });
 }

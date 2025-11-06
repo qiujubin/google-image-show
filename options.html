@@ -1,93 +1,280 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Google 图片站点过滤器 · 允许域名</title>
-  <style>
-    :root {
-      --bg: #0f1318;
-      --card: #181d24;
-      --border: #2b3240;
-      --text: #e8ecf1;
-      --muted: #9aa3af;
-      --accent: #3b82f6;
-      --accent-weak: #224a9e;
-      --success: #22c55e;
-      --warning: #f59e0b;
-      --danger: #ef4444;
-    }
-    html, body { margin:0; padding:0; background:var(--bg); color:var(--text); font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, "Noto Sans", "PingFang SC", "Microsoft Yahei", sans-serif; }
-    .wrap { max-width: 840px; margin: 40px auto; padding: 24px; background: var(--card); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 10px 20px rgba(0,0,0,0.25); }
-    h1 { font-size: 20px; margin: 0 0 8px; }
-    .desc { color: var(--muted); font-size: 14px; margin-bottom: 16px; }
-    .row { display: flex; gap: 16px; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-    .stat { display:flex; gap:12px; flex-wrap:wrap; }
-    .badge { display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius: 999px; background: #0c1116; border: 1px solid var(--border); font-size: 12px; color: var(--muted); }
-    .badge .dot { width:8px; height:8px; border-radius:50%; }
-    .dot.ok { background: var(--success); }
-    .dot.warn { background: var(--warning); }
-    .dot.err { background: var(--danger); }
-    textarea { width: 100%; min-height: 180px; resize: vertical; background: #0c1116; color: var(--text); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; outline: none; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-    textarea::placeholder { color: #5a6678; }
-    .actions { display:flex; gap:10px; margin-top: 12px; }
-    .btn { appearance:none; border:none; padding: 10px 14px; border-radius: 10px; cursor:pointer; font-weight:600; }
-    .btn.primary { background: var(--accent); color: white; }
-    .btn.primary:disabled { background: var(--accent-weak); cursor:not-allowed; }
-    .btn.secondary { background: #0c1116; border: 1px solid var(--border); color: var(--text); }
-    .feedback { margin-top: 12px; font-size: 13px; color: var(--muted); }
-    .feedback.success { color: var(--success); }
-    .feedback.warn { color: var(--warning); }
-    .list { margin-top: 14px; display:flex; gap:8px; flex-wrap:wrap; }
-    .pill { padding:6px 10px; border-radius: 999px; border: 1px solid var(--border); background:#0c1116; font-size:12px; color: var(--text); }
-    .pill.invalid { border-color: var(--danger); color: #ffb4b4; }
-    .seg { display:inline-flex; border:1px solid var(--border); border-radius:10px; overflow:hidden; }
-    .seg button { appearance:none; border:none; background:#0c1116; color:var(--text); padding:8px 12px; cursor:pointer; }
-    .seg button.active { background: var(--accent); color:#fff; }
-    .topbar { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
-    select { background:#0c1116; color:var(--text); border:1px solid var(--border); border-radius:8px; padding:6px 8px; }
-    .grid { display:grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    .card { padding:12px; border:1px solid var(--border); border-radius:12px; background:#0c1116; }
-    .card h2 { font-size:14px; margin:0 0 8px; color:var(--muted); }
-    .fade { transition: opacity .2s ease; }
-  </style>
-  </head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Google 图片站点过滤器 · 允许域名</title>
+    <style>
+         :root {
+            --bg: #0f1318;
+            --card: #181d24;
+            --border: #2b3240;
+            --text: #e8ecf1;
+            --muted: #9aa3af;
+            --accent: #3b82f6;
+            --accent-weak: #224a9e;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, "Noto Sans", "PingFang SC", "Microsoft Yahei", sans-serif;
+        }
+        
+        .wrap {
+            max-width: 840px;
+            margin: 40px auto;
+            padding: 24px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.25);
+        }
+        
+        h1 {
+            font-size: 20px;
+            margin: 0 0 8px;
+        }
+        
+        .desc {
+            color: var(--muted);
+            font-size: 14px;
+            margin-bottom: 16px;
+        }
+        
+        .row {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+        
+        .stat {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: #0c1116;
+            border: 1px solid var(--border);
+            font-size: 12px;
+            color: var(--muted);
+        }
+        
+        .badge .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+        
+        .dot.ok {
+            background: var(--success);
+        }
+        
+        .dot.warn {
+            background: var(--warning);
+        }
+        
+        .dot.err {
+            background: var(--danger);
+        }
+        
+        textarea {
+            width: 100%;
+            min-height: 180px;
+            resize: vertical;
+            background: #0c1116;
+            color: var(--text);
+            border: 1px solid var(--border);
+            box-sizing: border-box;
+            border-radius: 12px;
+            padding: 12px 14px;
+            outline: none;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        }
+        
+        textarea::placeholder {
+            color: #5a6678;
+        }
+        
+        .actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        
+        .btn {
+            appearance: none;
+            border: none;
+            padding: 10px 14px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        
+        .btn.primary {
+            background: var(--accent);
+            color: white;
+        }
+        
+        .btn.primary:disabled {
+            background: var(--accent-weak);
+            cursor: not-allowed;
+        }
+        
+        .btn.secondary {
+            background: #0c1116;
+            border: 1px solid var(--border);
+            color: var(--text);
+        }
+        
+        .feedback {
+            margin-top: 12px;
+            font-size: 13px;
+            color: var(--muted);
+        }
+        
+        .feedback.success {
+            color: var(--success);
+        }
+        
+        .feedback.warn {
+            color: var(--warning);
+        }
+        
+        .list {
+            margin-top: 14px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        
+        .pill {
+            padding: 6px 10px;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            background: #0c1116;
+            font-size: 12px;
+            color: var(--text);
+        }
+        
+        .pill.invalid {
+            border-color: var(--danger);
+            color: #ffb4b4;
+        }
+        
+        .seg {
+            display: inline-flex;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .seg button {
+            appearance: none;
+            border: none;
+            background: #0c1116;
+            color: var(--text);
+            padding: 8px 12px;
+            cursor: pointer;
+        }
+        
+        .seg button.active {
+            background: var(--accent);
+            color: #fff;
+        }
+        
+        .topbar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        
+        select {
+            background: #0c1116;
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 6px 8px;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        
+        .card {
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: #0c1116;
+        }
+        
+        .card h2 {
+            font-size: 14px;
+            margin: 0 0 8px;
+            color: var(--muted);
+        }
+        
+        .fade {
+            transition: opacity .2s ease;
+        }
+    </style>
+</head>
+
 <body>
-  <div class="wrap">
-    <div class="topbar">
-      <strong>选择模式：</strong>
-      <select id="modeSelect" class="fade"></select>
-      <button id="addMode" class="btn secondary">新增模式</button>
-      <button id="renameMode" class="btn secondary">重命名</button>
-      <button id="deleteMode" class="btn secondary">删除模式</button>
+    <div class="wrap">
+        <div class="topbar">
+            <strong>选择模式：</strong>
+            <select id="modeSelect" class="fade"></select>
+            <button id="addMode" class="btn secondary">新增模式</button>
+            <button id="renameMode" class="btn secondary">重命名</button>
+            <button id="deleteMode" class="btn secondary">删除模式</button>
+        </div>
+        <h1 id="title">允许/屏蔽规则</h1>
+        <div class="desc" id="desc">每个模式拥有独立的“允许”与“屏蔽”规则。填写顶级域名（匹配子域名）；每行一个，<code>#</code> 为注释。</div>
+        <div class="row">
+            <div class="stat" id="stats">
+                <div class="badge"><span class="dot ok"></span>有效域名：<span id="count-valid">0</span></div>
+                <div class="badge"><span class="dot warn"></span>重复项：<span id="count-dup">0</span></div>
+                <div class="badge"><span class="dot err"></span>无效/空行：<span id="count-invalid">0</span></div>
+            </div>
+            <div class="actions">
+                <button class="btn secondary" id="clear">清空</button>
+                <button class="btn primary" id="save">保存</button>
+            </div>
+        </div>
+        <div class="grid fade" id="rulesArea">
+            <div class="card">
+                <h2>允许名单</h2>
+                <textarea id="allowedSites" placeholder="例如：\nunsplash.com\npixabay.com\n# 以 # 开头的行是注释"></textarea>
+                <div class="list" id="previewAllow"></div>
+            </div>
+            <div class="card">
+                <h2>屏蔽名单</h2>
+                <textarea id="blockedSites" placeholder="例如：\nexample.com\n# 以 # 开头的行是注释"></textarea>
+                <div class="list" id="previewBlock"></div>
+            </div>
+        </div>
+        <div class="feedback" id="feedback">更改会在 Google 图片页刷新后生效（tbm=isch）。</div>
     </div>
-    <h1 id="title">允许/屏蔽规则</h1>
-    <div class="desc" id="desc">每个模式拥有独立的“允许”与“屏蔽”规则。填写顶级域名（匹配子域名）；每行一个，<code>#</code> 为注释。</div>
-    <div class="row">
-      <div class="stat" id="stats">
-        <div class="badge"><span class="dot ok"></span>有效域名：<span id="count-valid">0</span></div>
-        <div class="badge"><span class="dot warn"></span>重复项：<span id="count-dup">0</span></div>
-        <div class="badge"><span class="dot err"></span>无效/空行：<span id="count-invalid">0</span></div>
-      </div>
-      <div class="actions">
-        <button class="btn secondary" id="clear">清空</button>
-        <button class="btn primary" id="save">保存</button>
-      </div>
-    </div>
-    <div class="grid fade" id="rulesArea">
-      <div class="card">
-        <h2>允许名单</h2>
-        <textarea id="allowedSites" placeholder="例如：\nunsplash.com\npixabay.com\n# 以 # 开头的行是注释"></textarea>
-        <div class="list" id="previewAllow"></div>
-      </div>
-      <div class="card">
-        <h2>屏蔽名单</h2>
-        <textarea id="blockedSites" placeholder="例如：\nexample.com\n# 以 # 开头的行是注释"></textarea>
-        <div class="list" id="previewBlock"></div>
-      </div>
-    </div>
-    <div class="feedback" id="feedback">更改会在 Google 图片页刷新后生效（tbm=isch）。</div>
-  </div>
-  <script src="options.js"></script>
-  </body>
+    <script src="options.js"></script>
+</body>
+
 </html>

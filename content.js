@@ -8,21 +8,23 @@ let modes = {};
 let activeModeId = '';
 let currentAllow = [];
 let currentBlock = [];
+let filterMode = 'allow'; // 仅启用一个模式：'allow' 或 'block'
 
 // 加载用户设置
 async function loadSettings() {
   return new Promise((resolve) => {
-    chrome.storage.sync.get(['modes','activeModeId','enabled','allowedDomains','blockedDomains','mode'], (r) => {
+    chrome.storage.sync.get(['modes','activeModeId','enabled','allowedDomains','blockedDomains','mode','filterMode'], (r) => {
       enabled = r.enabled !== false;
+      filterMode = r.filterMode || r.mode || 'allow';
       if (!r.modes || typeof r.modes !== 'object' || Object.keys(r.modes).length === 0) {
-        // 迁移旧版本：保持旧行为（allow 模式只用 allow；block 模式只用 block）
+        // 迁移旧版本：仅启用一个过滤模式（allow 或 block）
         const oldMode = r.mode || 'allow';
         const allow = oldMode === 'allow' ? (r.allowedDomains || DEFAULT_ALLOWED) : [];
         const block = oldMode === 'block' ? (r.blockedDomains || []) : [];
         const id = 'mode-default';
         modes = { [id]: { name: '默认模式', allow, block } };
         activeModeId = id;
-        chrome.storage.sync.set({ modes, activeModeId }, () => {
+        chrome.storage.sync.set({ modes, activeModeId, filterMode: oldMode }, () => {
           currentAllow = allow; currentBlock = block; resolve();
         });
       } else {
@@ -30,7 +32,12 @@ async function loadSettings() {
         const cur = modes[activeModeId] || { allow: DEFAULT_ALLOWED, block: [] };
         currentAllow = Array.isArray(cur.allow) ? cur.allow : DEFAULT_ALLOWED;
         currentBlock = Array.isArray(cur.block) ? cur.block : [];
-        resolve();
+        // 若不存在 filterMode，设为默认 allow
+        if (!r.filterMode && !r.mode) {
+          chrome.storage.sync.set({ filterMode: 'allow' }, () => resolve());
+        } else {
+          resolve();
+        }
       }
     });
   });
@@ -40,16 +47,15 @@ async function loadSettings() {
 function isAllowed(url) {
   try {
     const domain = new URL(url).hostname.replace('www.', '');
-    const match = (list) => list && list.length > 0 && list.some(d => domain === d || domain.endsWith('.' + d));
-    // 策略：
-    // - 若允许名单非空：仅允许命中允许名单的条目；若同时命中屏蔽名单则仍屏蔽（屏蔽优先）。
-    // - 若允许名单为空：允许所有，命中屏蔽名单的条目被隐藏。
-    if (currentAllow && currentAllow.length > 0) {
-      const allowed = match(currentAllow);
-      if (!allowed) return false;
-      return !match(currentBlock);
+    const hit = (list) => list && list.length > 0 && list.some(d => domain === d || domain.endsWith('.' + d));
+    if (filterMode === 'allow') {
+      // 过滤模式：仅使用允许名单；屏蔽名单不生效
+      if (!currentAllow || currentAllow.length === 0) return true; // 允许名单为空时不过滤
+      return hit(currentAllow);
     } else {
-      return !match(currentBlock);
+      // 屏蔽模式：仅使用屏蔽名单；允许名单不生效
+      if (!currentBlock || currentBlock.length === 0) return true;
+      return !hit(currentBlock);
     }
   } catch (e) {
     return true;
@@ -171,6 +177,10 @@ function unfilterAll() {
       } else {
         if (isImagesPage()) { filterResults(); } else { filterInlineImagePack(); }
       }
+    }
+    if ((changes.filterMode || changes.mode) && enabled) {
+      filterMode = (changes.filterMode?.newValue) || (changes.mode?.newValue) || filterMode;
+      if (isImagesPage()) { filterResults(); } else { filterInlineImagePack(); }
     }
     if (changes._refreshToken && enabled) {
       if (isImagesPage()) { filterResults(); } else { filterInlineImagePack(); }
